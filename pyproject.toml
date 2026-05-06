@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyfantastat"
+version = "0.2.0"
+description = "Italian fantasy football (Fantacalcio) league management library"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.24",
+    "openpyxl>=3.1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7", "pytest-cov"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["pyfantastat*"]
+
+[tool.setuptools.package-data]
+pyfantastat = ["data/calendars/*.npz"]
