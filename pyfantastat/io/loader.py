@@ -110,10 +110,9 @@ def load_calendar_xlsx(path: str | Path) -> CalendarData:
 
     team_names = sorted(team_names_set)
     team_name_to_index = {name: idx for idx, name in enumerate(team_names)}
-    base_cycle = max(0, len(team_names) - 1)
 
     calendar: list[list[list[int]]] = []
-    for league_day in sorted(calendar_by_matchday)[:base_cycle]:
+    for league_day in sorted(calendar_by_matchday):
         day_matches: list[list[int]] = []
         for team_1, team_2 in calendar_by_matchday[league_day]:
             day_matches.append(

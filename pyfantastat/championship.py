@@ -83,6 +83,7 @@ class Championship:
             teams.append(t)
         ch = cls(teams, **kwargs)
         ch.set_calendar(data.calendar)
+        ch.set_current_matchday(data.current_matchday)
         return ch
 
     # ------------------------------------------------------------------
@@ -103,6 +104,18 @@ class Championship:
                     "Each matchday must contain exactly half the number of teams."
                 )
         self.calendar = calendar
+
+    def set_current_matchday(self, matchday: int) -> None:
+        """Set the current matchday index (0-based).
+
+        :param matchday: Index of the last completed matchday.
+        :raises ValueError: If calendar is not set or matchday is out of range.
+        """
+        if self.calendar is None:
+            raise ValueError("Calendar must be set before setting current matchday.")
+        if matchday < 0 or matchday >= len(self.calendar):
+            raise ValueError(f"Matchday index {matchday} is out of range.")
+        self.current_matchday = matchday
 
     # ------------------------------------------------------------------
     # Match result helpers
@@ -219,7 +232,7 @@ class Championship:
             t.goals_scored = 0
             t.goals_conceded = 0
 
-        for day_idx, day in enumerate(self.calendar):
+        for day_idx, day in enumerate(self.calendar[:self.current_matchday if self.current_matchday is not None else None]):
             for match in day:
                 res, goals = self.match_result(match, day_idx)
                 if res == 1:
@@ -374,7 +387,7 @@ class Championship:
         result: dict[str, dict[str, int]] = {
             t.team_name: {"W": 0, "D": 0, "L": 0} for t in self.teams
         }
-        for day_idx, day in enumerate(self.calendar):
+        for day_idx, day in enumerate(self.calendar[: self.current_matchday if self.current_matchday is not None else None]):
             for match in day:
                 res, _ = self.match_result(match, day_idx)
                 name_a = self.teams[match[0]].team_name
