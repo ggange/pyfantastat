@@ -59,6 +59,7 @@ class Championship:
         self.only_in_range = only_in_range
         self.card_order: list[str] = card_order if card_order is not None else []
         self.calendar: list[list[list[int]]] | None = None
+        self.current_matchday: int | None = None
 
     # ------------------------------------------------------------------
     # Factory
@@ -113,7 +114,7 @@ class Championship:
         """
         if self.calendar is None:
             raise ValueError("Calendar must be set before setting current matchday.")
-        if matchday < 0 or matchday >= len(self.calendar):
+        if matchday < 0 or matchday > len(self.calendar):
             raise ValueError(f"Matchday index {matchday} is out of range.")
         self.current_matchday = matchday
 
@@ -278,8 +279,9 @@ class Championship:
                         continue
 
                     elif card == "Somma punti totale":
+                        md = self.current_matchday if self.current_matchday is not None else None
                         totals = np.array(
-                            [np.sum(self.teams[i].fanta_pts_scored) for i in orig_ids]
+                            [np.sum(self.teams[i].fanta_pts_scored[:md]) for i in orig_ids]
                         )
                         if np.unique(totals).size == 1:
                             continue
@@ -289,7 +291,8 @@ class Championship:
 
                     elif card == "Classifica avulsa":
                         mini_pts = np.zeros(len(orig_ids))
-                        for day_idx, day in enumerate(self.calendar):
+                        md = self.current_matchday if self.current_matchday is not None else None
+                        for day_idx, day in enumerate(self.calendar[:md]):
                             for match in day:
                                 if match[0] in orig_ids and match[1] in orig_ids:
                                     res, _ = self.match_result(match, day_idx)
@@ -413,7 +416,8 @@ class Championship:
             raise ValueError("Calendar must be set before computing statistics.")
 
         opponent_scores: list[float] = []
-        for day_idx, day in enumerate(self.calendar):
+        md = self.current_matchday if self.current_matchday is not None else None
+        for day_idx, day in enumerate(self.calendar[:md]):
             for match in day:
                 if match[0] == team_idx:
                     opponent_scores.append(self.teams[match[1]].fanta_pts_scored[day_idx])
@@ -428,7 +432,8 @@ class Championship:
 
         :returns: List of ``(team_name, total_pts)`` sorted best-first.
         """
-        totals = [(t.team_name, float(np.sum(t.fanta_pts_scored))) for t in self.teams]
+        md = self.current_matchday if self.current_matchday is not None else None
+        totals = [(t.team_name, float(np.sum(t.fanta_pts_scored[:md]))) for t in self.teams]
         return sorted(totals, key=lambda x: x[1], reverse=True)
 
     def lowest_scoring_day(self) -> tuple[int, float]:
@@ -440,8 +445,9 @@ class Championship:
         if self.calendar is None:
             raise ValueError("Calendar must be set before computing statistics.")
 
+        md = self.current_matchday if self.current_matchday is not None else None
         day_scores = []
-        for day_idx, day in enumerate(self.calendar):
+        for day_idx, day in enumerate(self.calendar[:md]):
             total = sum(
                 self.teams[match[0]].fanta_pts_scored[day_idx]
                 + self.teams[match[1]].fanta_pts_scored[day_idx]
@@ -459,8 +465,9 @@ class Championship:
         if self.calendar is None:
             raise ValueError("Calendar must be set before computing statistics.")
 
+        md = self.current_matchday if self.current_matchday is not None else None
         day_scores = []
-        for day_idx, day in enumerate(self.calendar):
+        for day_idx, day in enumerate(self.calendar[:md]):
             total = sum(
                 self.teams[match[0]].fanta_pts_scored[day_idx]
                 + self.teams[match[1]].fanta_pts_scored[day_idx]
@@ -478,8 +485,9 @@ class Championship:
         if self.calendar is None:
             raise ValueError("Calendar must be set before computing statistics.")
 
+        md = self.current_matchday if self.current_matchday is not None else None
         counts: dict[str, int] = {t.team_name: 0 for t in self.teams}
-        for day_idx, day in enumerate(self.calendar):
+        for day_idx, day in enumerate(self.calendar[:md]):
             for match in day:
                 pts_a = self.teams[match[0]].fanta_pts_scored[day_idx]
                 pts_b = self.teams[match[1]].fanta_pts_scored[day_idx]
@@ -497,8 +505,9 @@ class Championship:
         if self.calendar is None:
             raise ValueError("Calendar must be set before computing statistics.")
 
+        md = self.current_matchday if self.current_matchday is not None else None
         counts: dict[str, int] = {t.team_name: 0 for t in self.teams}
-        for day_idx, day in enumerate(self.calendar):
+        for day_idx, day in enumerate(self.calendar[:md]):
             for match in day:
                 pts_a = self.teams[match[0]].fanta_pts_scored[day_idx]
                 pts_b = self.teams[match[1]].fanta_pts_scored[day_idx]
@@ -524,7 +533,8 @@ class Championship:
         actual_pts = int(self.ranking[team_a_idx])
         what_if_pts = 0
 
-        for day_idx, day in enumerate(self.calendar):
+        md = self.current_matchday if self.current_matchday is not None else None
+        for day_idx, day in enumerate(self.calendar[:md]):
             # Find team B's opponent on this day
             opponent_b_idx: int | None = None
             for match in day:
@@ -556,7 +566,8 @@ class Championship:
         best: dict | None = None
         worst: dict | None = None
 
-        for day_idx, day in enumerate(self.calendar or []):
+        md = self.current_matchday if self.current_matchday is not None else None
+        for day_idx, day in enumerate((self.calendar or [])[:md]):
             for match in day:
                 for team_idx in match:
                     pts = self.teams[team_idx].fanta_pts_scored[day_idx]
