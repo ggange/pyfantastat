@@ -51,12 +51,17 @@ def pearson_correlation(
 # ------------------------------------------------------------------
 
 
-def team_scoring_stats(team: "Team") -> dict[str, float]:
+def team_scoring_stats(
+    team: "Team",
+    n_matchdays: int | None = None,
+) -> dict[str, float]:
     """Return summary statistics for a team's fantapoints scored.
 
+    :param n_matchdays: If given, only the first *n_matchdays* entries are used.
+        Pass ``championship.current_matchday`` to exclude unplayed rounds.
     :returns: ``{"mean": ..., "std": ..., "median": ...}``
     """
-    pts = np.asarray(team.fanta_pts_scored, dtype=float)
+    pts = np.asarray(team.fanta_pts_scored[:n_matchdays], dtype=float)
     return {
         "mean": float(np.mean(pts)),
         "std": float(np.std(pts)),
@@ -64,13 +69,20 @@ def team_scoring_stats(team: "Team") -> dict[str, float]:
     }
 
 
-def scoring_correlation(team_a: "Team", team_b: "Team") -> float:
+def scoring_correlation(
+    team_a: "Team",
+    team_b: "Team",
+    n_matchdays: int | None = None,
+) -> float:
     """Pearson correlation between two teams' weekly fantapoints scored.
 
+    :param n_matchdays: If given, only the first *n_matchdays* entries are used.
+        Pass ``championship.current_matchday`` to exclude unplayed rounds (which
+        are stored as 0.0 and would artificially inflate the correlation).
     :raises ValueError: If the teams have different numbers of matchdays.
     """
-    a = np.asarray(team_a.fanta_pts_scored, dtype=float)
-    b = np.asarray(team_b.fanta_pts_scored, dtype=float)
+    a = np.asarray(team_a.fanta_pts_scored[:n_matchdays], dtype=float)
+    b = np.asarray(team_b.fanta_pts_scored[:n_matchdays], dtype=float)
     if len(a) != len(b):
         raise ValueError(
             f"Teams have different matchday counts: {len(a)} vs {len(b)}."

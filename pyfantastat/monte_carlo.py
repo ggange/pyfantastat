@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.resources
 from dataclasses import dataclass
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -56,8 +57,12 @@ def _load_pool(n: int) -> np.ndarray:
     }
     filename = pool_files.get(n)
     if filename is not None:
-        pkg = importlib.resources.files("pyfantastat").joinpath("data/calendars")
-        path = pkg.joinpath(filename)
+        # Locate data relative to this file — robust against namespace-package
+        # edge cases where importlib.resources.files() resolves to the wrong root.
+        data_dir = importlib.resources.files("pyfantastat").joinpath("data/calendars")
+        _module_dir = Path(__file__).parent
+        _fallback = _module_dir / "data" / "calendars" / filename
+        path = data_dir.joinpath(filename)
         try:
             with importlib.resources.as_file(path) as p:
                 npz = np.load(p)
@@ -65,6 +70,11 @@ def _load_pool(n: int) -> np.ndarray:
             return npz[key]
         except (FileNotFoundError, KeyError):
             pass
+        # importlib.resources resolved to wrong root; try __file__-relative path
+        if _fallback.exists():
+            npz = np.load(_fallback)
+            key = "calendars" if "calendars" in npz else npz.files[0]
+            return npz[key]
 
     # Fallback: minimal pool with a single pairing calendar
     if n % 2 != 0:
@@ -134,14 +144,22 @@ class MonteCarloSimulator:
     # ------------------------------------------------------------------
 
     def _fantapoints_matrix(self) -> np.ndarray:
-        """Return array of shape ``(n_teams, n_rounds)`` from team histories."""
+        """Return array of shape ``(n_teams, n_played_rounds)`` from team histories.
+
+        Only played matchdays (up to ``current_matchday``) are included.
+        Unplayed rounds are stored as 0.0 in ``fanta_pts_scored`` and must be
+        excluded, otherwise the sampler draws fake zero-point rounds.
+        """
+        md = self.championship.current_matchday
         rows = [
-            np.asarray(t.fanta_pts_scored, dtype=np.float64)
+            np.asarray(t.fanta_pts_scored[:md], dtype=np.float64)
             for t in self.championship.teams
         ]
         if not rows:
             raise ValueError("No teams in championship.")
         max_len = max(len(r) for r in rows)
+        if max_len == 0:
+            raise ValueError("No played matchdays found in team histories.")
         matrix = np.zeros((len(rows), max_len), dtype=np.float64)
         for i, row in enumerate(rows):
             matrix[i, : len(row)] = row
@@ -152,26 +170,25 @@ class MonteCarloSimulator:
         k_indices: np.ndarray,
         pool: np.ndarray,
         fantapoints: np.ndarray,
-        day_samples: np.ndarray,
     ) -> tuple[np.ndarray, np.ndarray]:
         """Simulate *B* seasons in one vectorised pass.
 
-        :param day_samples: Shape ``(B, R_pool)`` — matchday indices sampled
-            from ``[0, n_matchdays)`` for each simulated season.  Allows
-            re-using all historical matchdays even when the pool has fewer
-            rounds than matchdays played.
+        The pool must already have been tiled/trimmed so that its round count
+        matches ``fantapoints.shape[1]``.  Round *r* in every simulated season
+        always maps to the actual historical matchday *r*, so only the calendar
+        pairings (who faces whom) vary across simulations.
+
         :returns: ``(league_pts, ranks)`` each of shape ``(B, n_teams)``.
         """
         B = k_indices.size
-        n = fantapoints.shape[0]
+        n, R = fantapoints.shape
         cal_batch = pool[k_indices]  # (B, R, M, 2)
-        R = cal_batch.shape[1]
         M = cal_batch.shape[2]
 
         team_a = cal_batch[:, :, :, 0]  # (B, R, M)
         team_b = cal_batch[:, :, :, 1]
-        # day_samples: (B, R) → broadcast to (B, R, 1) for indexing (B, R, M)
-        day_idx = day_samples[:, :, None]  # (B, R, 1)
+        # Round r always uses historical matchday r — only pairings vary.
+        day_idx = np.arange(R, dtype=np.intp)[None, :, None]  # (1, R, 1)
 
         fa = fantapoints[team_a, day_idx]  # (B, R, M)
         fb = fantapoints[team_b, day_idx]
@@ -195,10 +212,9 @@ class MonteCarloSimulator:
                 np.add.at(league_pts, (b_idx, team_a[:, r, m]), pa[:, r, m])
                 np.add.at(league_pts, (b_idx, team_b[:, r, m]), pb[:, r, m])
 
-        # Tie-break key: use total fantapoints across the sampled matchdays
-        sampled_fpt = fantapoints[:, day_samples.T]  # (n, R, B) — per-team sampled totals
-        fantapoints_total = sampled_fpt.sum(axis=1).T  # (B, n)
-        key = league_pts * (fantapoints_total.max() + 1.0) + fantapoints_total
+        # Tie-break: fixed total fantapoints across all played rounds (same for every sim).
+        fantapoints_total = np.sum(fantapoints, axis=1)  # (n,)
+        key = league_pts * (fantapoints_total.max() + 1.0) + fantapoints_total[None, :]
         order = np.argsort(-key, kind="stable", axis=1)
         ranks = np.empty((B, n), dtype=np.int32)
         ranks[np.arange(B)[:, None], order] = np.arange(n, dtype=np.int32)
@@ -218,7 +234,16 @@ class MonteCarloSimulator:
         n, n_matchdays = fantapoints.shape
         pool = _load_pool(n)
         K = pool.shape[0]
-        R_pool = pool.shape[1]  # rounds per simulated season
+        R_pool = pool.shape[1]  # rounds per calendar in the pool
+
+        # Tile or trim the pool so every simulated season has exactly n_matchdays rounds.
+        # Round r in each simulation then maps 1-to-1 to historical matchday r.
+        if R_pool != n_matchdays:
+            if n_matchdays > R_pool:
+                repeats = (n_matchdays + R_pool - 1) // R_pool
+                pool = np.tile(pool, (1, repeats, 1, 1))[:, :n_matchdays, :, :]
+            else:
+                pool = pool[:, :n_matchdays, :, :].copy()
 
         rng = np.random.default_rng(self.seed)
         rank_counts = np.zeros((n, n), dtype=np.int64)
@@ -232,10 +257,8 @@ class MonteCarloSimulator:
         while done < self.n_iterations:
             step = min(self.batch, self.n_iterations - done)
             k_indices = rng.integers(0, K, size=step, dtype=np.intp)
-            # Sample R_pool matchday indices per simulated season from historical data
-            day_samples = rng.integers(0, n_matchdays, size=(step, R_pool), dtype=np.intp)
 
-            pts_batch, ranks_batch = self._run_batch(k_indices, pool, fantapoints, day_samples)
+            pts_batch, ranks_batch = self._run_batch(k_indices, pool, fantapoints)
 
             sum_pts += pts_batch.sum(axis=0)
             np.add.at(
