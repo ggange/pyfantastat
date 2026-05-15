@@ -34,3 +34,8 @@ coverage.xml
 .venv/
 venv/
 env/
+
+# Personal Fantacalcio data files — keep real league exports out of the repo
+Calendario_*.xlsx
+Formazioni/
+listone.xlsx

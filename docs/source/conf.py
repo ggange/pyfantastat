@@ -9,7 +9,7 @@
 project = 'pyfantastat'
 copyright = '2026, ggange'
 author = 'ggange'
-release = '0.0.1'
+release = '0.3.0'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

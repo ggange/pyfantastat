@@ -268,8 +268,8 @@ class Championship:
 
                 if len(orig_ids) > 2:
                     warning_message = (
-                        "Potrebbero esserci più di due squadre appaiate in classifica. "
-                        "Ci stiamo lavorando!"
+                        "More than two teams are tied in the standings; "
+                        "full multi-way tiebreaker is not yet implemented."
                     )
 
                 pos_in_sort = np.flatnonzero(np.isin(arg_sort, orig_ids))

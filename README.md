@@ -1,12 +1,21 @@
 # pyfantastat
 
-A Python library for Italian fantasy football (Fantacalcio) league management — parse league calendars, compute standings with full tiebreaker logic, run analytics, and estimate ranking probabilities via Monte Carlo simulation.
+[![CI](https://github.com/ggange/pyfantastat/actions/workflows/ci.yml/badge.svg)](https://github.com/ggange/pyfantastat/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/pyfantastat)](https://pypi.org/project/pyfantastat/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+
+A Python library for Italian fantasy football (Fantacalcio) league management — parse league calendars and lineup exports, compute standings with full tiebreaker logic, run analytics, and estimate ranking probabilities via Monte Carlo simulation.
+
+> **Disclaimer:** pyfantastat is an independent, community-developed library. It is not affiliated with, sponsored by, or endorsed by [Fantacalcio.it](https://www.fantacalcio.it/). The parsers expect Excel files that can be exported from the Fantacalcio.it platform; all trademarks belong to their respective owners.
+
+---
 
 ## Requirements
 
 - Python 3.10+
 - NumPy ≥ 1.24
-- openpyxl ≥ 3.1 (for reading `.xlsx` calendars)
+- openpyxl ≥ 3.1 (for reading `.xlsx` exports)
 
 ## Installation
 
@@ -17,7 +26,7 @@ pip install pyfantastat
 Or in editable mode from source:
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/ggange/pyfantastat.git
 cd pyfantastat
 pip install -e ".[dev]"
 ```
@@ -29,7 +38,7 @@ pip install -e ".[dev]"
 ```python
 from pyfantastat import Championship, load_calendar_xlsx
 
-# Parse a Fantacalcio calendar workbook
+# Parse a Fantacalcio calendar workbook (exported from fantacalcio.it)
 data = load_calendar_xlsx("my_league.xlsx")
 
 # Build and rank the championship in one call
@@ -53,12 +62,12 @@ for pos, idx in enumerate(sorted_indices, start=1):
 
 Fantapoints are converted to "goals" by counting how many thresholds a team's score crosses:
 
-| Default threshold | Points needed |
+| Goals | Fantapoints needed |
 |---|---|
-| 1 goal | ≥ 66 |
-| 2 goals | ≥ 71 |
-| 3 goals | ≥ 76 |
-| … | … |
+| 1 | ≥ 66 |
+| 2 | ≥ 71 |
+| 3 | ≥ 76 |
+| … | … (+ 5 per goal) |
 
 The gap between thresholds is 5 by default and can be changed via `goal_threshold`.
 
@@ -94,7 +103,7 @@ Pass any ordered subset of the following strings:
 ```python
 from pyfantastat import Team
 
-t = Team(team_name="Juventus FC", user_name="Alice")
+t = Team(team_name="My Team", user_name="Alice")
 t.add_fanta_pts_scored([80.5, 72.0, 68.0])   # one value per matchday
 t.add_fanta_pts_against([65.0, 74.0, 71.0])
 ```
@@ -170,15 +179,15 @@ Result codes: `1` = team A wins, `2` = team B wins, `0` = draw.
 ```python
 ch.generate_ranking()   # required before analytics
 
-wdl  = ch.get_wins_draws_losses()        # {"Team0": {"W": 3, "D": 0, "L": 0}, ...}
-sos  = ch.strength_of_schedule(0)        # average opponent fantapoints for team 0
-fpt  = ch.total_fpt_ranking()            # [("Team0", 226.0), ...] sorted descending
-lo   = ch.lowest_scoring_day()           # (matchday_idx, combined_score)
-hi   = ch.highest_scoring_day()          # (matchday_idx, combined_score)
-close = ch.number_close_matches()        # matches with |pts_diff| ≤ 3 and both ≥ 66
-draws = ch.close_draws()                 # subset of above: draws only
-act, hyp = ch.what_if_calendar(0, 1)    # actual vs hypothetical pts for team 0 on team 1's schedule
-prizes = ch.prizes()                     # {"highest": {...}, "lowest": {...}}
+wdl   = ch.get_wins_draws_losses()        # {"Team0": {"W": 3, "D": 0, "L": 0}, ...}
+sos   = ch.strength_of_schedule(0)        # average opponent fantapoints for team 0
+fpt   = ch.total_fpt_ranking()            # [("Team0", 226.0), ...] sorted descending
+lo    = ch.lowest_scoring_day()           # (matchday_idx, combined_score)
+hi    = ch.highest_scoring_day()          # (matchday_idx, combined_score)
+close = ch.number_close_matches()         # matches with |pts_diff| ≤ 3 and both ≥ 66
+draws = ch.close_draws()                  # subset of above: draws only
+act, hyp = ch.what_if_calendar(0, 1)     # actual vs hypothetical pts for team 0 on team 1's schedule
+prizes = ch.prizes()                      # {"highest": {...}, "lowest": {...}}
 ```
 
 ---
@@ -190,18 +199,56 @@ from pyfantastat import load_calendar_xlsx, CalendarData
 
 data: CalendarData = load_calendar_xlsx("league.xlsx")
 
-print(data.league_name)         # e.g. "FantaLeague 2024"
-print(data.team_names)          # sorted list of team names
-print(data.team_points["FC Roma"])  # [78.5, 65.0, 82.0, ...]
-print(data.current_matchday)    # most recent completed matchday (1-based)
-print(data.calendar)            # nested list[matchday][match][team_idx_a, team_idx_b]
+print(data.league_name)                      # e.g. "FantaLeague 2024"
+print(data.team_names)                       # sorted list of team names
+print(data.team_points["My Team"])           # [78.5, 65.0, 82.0, ...]
+print(data.current_matchday)                 # most recent completed matchday (1-based)
+print(data.calendar)                         # nested list[matchday][match][team_idx_a, team_idx_b]
 ```
 
-The workbook must follow the standard Fantacalcio calendar layout:
+The workbook must follow the standard Fantacalcio calendar layout as exported from Fantacalcio.it:
+
 - Cell E1: `"Calendario <league_name>"`
 - Columns A–F: odd-numbered league matchdays
 - Columns G–L: even-numbered league matchdays
 - Each match row: `Team1 | Pts1 | Pts2 | Team2`
+
+---
+
+### Formazioni (lineup exports)
+
+pyfantastat can also parse the per-matchday lineup Excel files ("Formazioni") exported from Fantacalcio.it, and expose per-player statistics and best-11 selection.
+
+```python
+from pyfantastat import (
+    load_formazioni_dir,
+    build_team_rosters,
+    player_scoring_stats,
+    validate_formazioni,
+    top_formation,
+)
+
+# Load all matchday files from a directory
+form_data = load_formazioni_dir("path/to/Formazioni/")
+
+# Aggregate into per-team rosters
+rosters = build_team_rosters(form_data)
+
+# Per-player scoring stats (mean/std of voto and fantavoto)
+from pyfantastat import player_scoring_stats
+for norm_name, record in rosters["my team"].players.items():
+    stats = player_scoring_stats(record)
+    print(record.name, stats["mean_fantavoto"])
+
+# Cross-validate totals against the calendar
+validation = validate_formazioni(form_data, data, tol=0.5)
+print("OK" if validation.ok else validation.issues)
+
+# Best 11 selection (Bayesian Expected Fantavoto across all 7 standard formations)
+result = top_formation(rosters["my team"])
+print(f"Best formation: 1-{result.formation[0]}-{result.formation[1]}-{result.formation[2]}")
+print(f"Total EFV: {result.total_efv:.2f}")
+```
 
 ---
 
@@ -231,7 +278,7 @@ corr = scoring_correlation(t, t2)   # Pearson correlation in [-1, 1]
 
 ### Monte Carlo simulation
 
-Estimates ranking probabilities by simulating thousands of seasons using pre-computed calendar pools for leagues of 8, 10, or 12 teams (falls back to a minimal round-robin for other sizes).
+Estimates ranking probabilities by simulating thousands of seasons using pre-computed calendar pools for leagues of 8, 10, or 12 teams.
 
 ```python
 from pyfantastat import Championship, load_calendar_xlsx
@@ -239,6 +286,7 @@ from pyfantastat.monte_carlo import MonteCarloSimulator
 
 data = load_calendar_xlsx("league.xlsx")
 ch = Championship.from_calendar_data(data)
+ch.generate_ranking()
 
 sim = MonteCarloSimulator(
     ch,
@@ -255,10 +303,8 @@ result = sim.run()
 # result.iterations_run           = actual seasons simulated
 # result.converged                = True if stopped early
 
-n = len(ch.teams)
-for team_idx in range(n):
-    team = ch.teams[team_idx]
-    p_first = result.rank_probabilities[team_idx, 0]
+for i, team in enumerate(ch.teams):
+    p_first = result.rank_probabilities[i, 0]
     print(f"{team.team_name}: P(1st) = {p_first:.1%}")
 ```
 
@@ -273,37 +319,61 @@ pyfantastat/
 ├── __init__.py          # public exports
 ├── team.py              # Team class
 ├── championship.py      # Championship class (ranking + analytics)
+├── formazioni.py        # top_formation, validate_formazioni, build_team_rosters
 ├── statistics.py        # mean, std, median, pearson_correlation, helpers
 ├── monte_carlo.py       # MonteCarloSimulator, MonteCarloResult
 ├── io/
 │   ├── __init__.py
 │   ├── loader.py        # load_calendar_xlsx
-│   └── models.py        # CalendarData dataclass
+│   ├── formazioni.py    # load_formazioni_xlsx, load_formazioni_dir
+│   └── models.py        # CalendarData, FormazioniMatchday, … dataclasses
 └── data/
     └── calendars/       # pre-computed .npz calendar pools (n=8, 10, 12)
 
 tests/
 ├── conftest.py
 ├── fixtures/
-│   └── sample_calendar.xlsx
+│   ├── sample_calendar.xlsx
+│   └── sample_formazioni.xlsx
 ├── test_team.py
 ├── test_championship.py
 ├── test_championship_stats.py
 ├── test_statistics.py
 ├── test_monte_carlo.py
 ├── test_loader.py
+├── test_formazioni_io.py
+├── test_formazioni_analytics.py
 └── test_import.py
 ```
 
 ## Running tests
 
 ```bash
-pytest tests/ -v
+pytest
 ```
+
+With coverage:
+
+```bash
+pytest --cov=pyfantastat --cov-report=term-missing
+```
+
+---
 
 ## Changelog
 
+### 0.3.0
+
+- Open-source cleanup: replaced personal league filename in demo notebook with a generic placeholder
+- Added MIT `LICENSE` file
+- Added GitHub Actions CI workflow (Python 3.10, 3.11, 3.12)
+- Added `CONTRIBUTING.md`
+- Translated remaining Italian warning message in `championship.py` to English
+- Added `[project.urls]` and `license` field to `pyproject.toml`
+- Updated `.gitignore` to exclude personal Fantacalcio data files
+
 ### 0.2.0
+
 - Restructured package: removed `src/` indirection, added `io/` sub-package
 - Renamed all attributes and methods to snake_case
 - Fixed non-idempotent `generate_ranking()` (goal counters now reset on each call)
@@ -313,7 +383,19 @@ pytest tests/ -v
   `what_if_calendar`, `prizes`
 - Added `pyfantastat.statistics` module
 - Added `pyfantastat.monte_carlo` module with vectorised batch simulation and convergence stopping
-- Expanded test suite to 46 tests across 7 files
+- Added `pyfantastat.formazioni` module: lineup parsing, roster aggregation, player stats, best-11 selection
+- Expanded test suite to 83 tests across 9 files
 
 ### 0.1.0
+
 - Initial release: `Team`, `Championship`, `load_calendar_xlsx`, `CalendarData`
+
+---
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, testing, and contribution guidelines.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
