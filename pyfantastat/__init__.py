@@ -10,6 +10,12 @@ from pyfantastat.io import (
     load_formazioni_dir,
 )
 from pyfantastat.statistics import mean, std, median, pearson_correlation
+from pyfantastat.pandas_utils import (
+    roster_to_dataframe,
+    rosters_to_dataframe,
+    top_formation_to_dataframe,
+    matchday_to_dataframe,
+)
 from pyfantastat.formazioni import (
     PlayerRecord,
     TeamRoster,
@@ -37,6 +43,10 @@ __all__ = [
     "std",
     "median",
     "pearson_correlation",
+    "roster_to_dataframe",
+    "rosters_to_dataframe",
+    "top_formation_to_dataframe",
+    "matchday_to_dataframe",
     "PlayerRecord",
     "TeamRoster",
     "TopFormationPlayer",
