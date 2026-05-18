@@ -1,5 +1,5 @@
 from pyfantastat.team import Team
-from pyfantastat.championship import Championship
+from pyfantastat.championship import Championship, CompetitionType, TiebreakerCriterion
 from pyfantastat.io import (
     load_calendar_xlsx,
     CalendarData,
@@ -32,6 +32,8 @@ from pyfantastat.formazioni import (
 __all__ = [
     "Team",
     "Championship",
+    "CompetitionType",
+    "TiebreakerCriterion",
     "load_calendar_xlsx",
     "CalendarData",
     "FormazioniPlayer",

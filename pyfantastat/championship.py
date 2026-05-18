@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import enum
 from typing import TYPE_CHECKING, Optional
 
 import numpy as np
@@ -12,22 +13,41 @@ if TYPE_CHECKING:
     from pyfantastat.io.models import CalendarData
 
 
+class CompetitionType(str, enum.Enum):
+    """Supported competition formats."""
+
+    STANDARD = "Standard"
+    MANTRA = "Mantra"
+
+
+class TiebreakerCriterion(str, enum.Enum):
+    """Recognised tiebreaker criteria for :attr:`Championship.card_order`."""
+
+    PUNTI = "Punti"
+    TOTAL_POINTS = "Somma punti totale"
+    HEAD_TO_HEAD = "Classifica avulsa"
+    GOAL_DIFFERENCE = "Differenza reti"
+    GOALS_SCORED = "Gol fatti"
+    GOALS_CONCEDED = "Gol subiti"
+
+
 class Championship:
     """Manages championship calculations, rankings, and analytics."""
 
     def __init__(
         self,
         teams: list[Team],
-        competition_type: str = "Standard",
+        competition_type: CompetitionType | str = CompetitionType.STANDARD,
         goal_threshold: int | None = None,
         interval: bool = False,
         only_in_range: bool = False,
         pt_interval: float | None = None,
-        card_order: list[str] | None = None,
+        card_order: list[TiebreakerCriterion | str] | None = None,
     ):
         """
         :param teams: Team objects participating in the championship.
-        :param competition_type: ``"Standard"`` (``"Mantra"`` not yet supported).
+        :param competition_type: :class:`CompetitionType` (or its string value).
+            ``"Mantra"`` is not yet supported.
         :param goal_threshold: Point gap between consecutive goal thresholds.
             Defaults to 5 (thresholds at 66, 71, 76, 81, 86, 91, 96).
         :param interval: If True, award/deny a goal based on point-difference bands.
@@ -35,17 +55,18 @@ class Championship:
             tied matches (not all matches).
         :param pt_interval: Minimum point difference required to trigger the band
             goal when ``interval=True``.
-        :param card_order: Ordered list of tiebreaker criteria. Supported values:
-            ``"Punti"``, ``"Somma punti totale"``, ``"Classifica avulsa"``,
-            ``"Differenza reti"``, ``"Gol fatti"``, ``"Gol subiti"``.
+        :param card_order: Ordered list of :class:`TiebreakerCriterion` values
+            (or their string equivalents).
         """
-        if competition_type == "Standard":
-            self.competition_type = "Standard"
-        elif competition_type == "Mantra":
+        if competition_type == CompetitionType.STANDARD:
+            self.competition_type = CompetitionType.STANDARD
+        elif competition_type == CompetitionType.MANTRA:
             raise NotImplementedError("Mantra competition type is not yet implemented.")
         else:
+            allowed = [c.value for c in CompetitionType]
             raise ValueError(
-                "Invalid competition type. Allowed values are 'Standard' and 'Mantra'."
+                f"Invalid competition type {competition_type!r}. "
+                f"Allowed values: {allowed}."
             )
 
         self.teams = teams
@@ -57,7 +78,16 @@ class Championship:
         self.interval = interval
         self.pt_interval = pt_interval
         self.only_in_range = only_in_range
-        self.card_order: list[str] = card_order if card_order is not None else []
+        try:
+            self.card_order: list[TiebreakerCriterion] = [
+                TiebreakerCriterion(c) for c in (card_order or [])
+            ]
+        except ValueError:
+            valid = [c.value for c in TiebreakerCriterion]
+            raise ValueError(
+                f"Invalid tiebreaker criterion in card_order. "
+                f"Use TiebreakerCriterion values: {valid}."
+            )
         self.calendar: list[list[list[int]]] | None = None
         self.current_matchday: int | None = None
 
