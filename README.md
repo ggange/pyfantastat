@@ -9,6 +9,8 @@ A Python library for Italian fantasy football (Fantacalcio) league management â€
 
 > **Disclaimer:** pyfantastat is an independent, community-developed library. It is not affiliated with, sponsored by, or endorsed by [Fantacalcio.it](https://www.fantacalcio.it/). The parsers expect Excel files that can be exported from the Fantacalcio.it platform; all trademarks belong to their respective owners.
 
+> **Disclaimer 2** This library was restructured using Claude based on routines I had coded myself. I am open-sourcing it with the idea that someone might find it useful. Any contribution is welcome!
+
 ---
 
 ## Requirements

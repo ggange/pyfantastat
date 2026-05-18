@@ -3,7 +3,7 @@
 ## Setup
 
 ```bash
-git clone https://github.com/<your-username>/pyfantastat.git
+git clone https://github.com/ggange/pyfantastat.git
 cd pyfantastat
 pip install -e ".[dev]"
 ```
