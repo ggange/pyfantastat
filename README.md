@@ -22,16 +22,30 @@ A Python library for Italian fantasy football (Fantacalcio) league management â€
 ## Installation
 
 ```bash
-pip install pyfantastat
+pip install pyfantastat                  # core library
+pip install "pyfantastat[notebook]"      # + Jupyter, pandas, matplotlib, seaborn
 ```
 
-Or in editable mode from source:
+### Contributing / running the demo notebook
+
+Use a virtual environment to keep the install isolated:
 
 ```bash
 git clone https://github.com/ggange/pyfantastat.git
 cd pyfantastat
-pip install -e ".[dev]"
+python3 -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+pip install -e ".[dev,notebook]"
 ```
+
+To open the demo notebook, register the venv as a Jupyter kernel first:
+
+```bash
+python -m ipykernel install --user --name pyfantastat --display-name "pyfantastat"
+jupyter notebook examples/pyfantastat_demo.ipynb
+```
+
+Select the **pyfantastat** kernel in the notebook UI (Kernel â†’ Change kernel).
 
 ---
 
