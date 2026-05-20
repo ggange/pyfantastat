@@ -170,7 +170,7 @@ class Championship:
             ``[goals_a, goals_b]``.
         """
         limits = self._goal_limits()
-        goals = np.zeros(2)
+        goals = np.zeros(2, dtype=int)
 
         for k, m in enumerate(match):
             pts = self.teams[m].fanta_pts_scored[matchday]
@@ -199,7 +199,7 @@ class Championship:
         :returns: ``(result, goals)`` — same convention as :meth:`match_result`.
         """
         limits = self._goal_limits()
-        goals = np.zeros(2)
+        goals = np.zeros(2, dtype=int)
 
         for k, pts in enumerate([pts_a, pts_b]):
             for h, lim in enumerate(limits, start=1):
@@ -226,11 +226,14 @@ class Championship:
                 elif -diff >= self.pt_interval and pts_b >= 66:
                     goals[1] += 1
         else:
-            if diff >= self.pt_interval and pts_a >= 66:
-                goals[0] += 1
-            elif -diff >= self.pt_interval and pts_b >= 66:
-                goals[1] += 1
-            else:
+            if goals[0] == goals[1]:
+                # Tied on goals: break the tie if points diff is large enough
+                if diff >= self.pt_interval and pts_a >= 66:
+                    goals[0] += 1
+                elif -diff >= self.pt_interval and pts_b >= 66:
+                    goals[1] += 1
+            elif abs(diff) < self.pt_interval:
+                # Not tied but points are close: drag both down to the minimum
                 g_min = np.min(goals)
                 goals[:] = g_min
 
