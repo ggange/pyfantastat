@@ -30,7 +30,7 @@ class Team:
         """Set the team color used for plotting."""
         self.color = color
 
-    def add_goals(self, scored: int | float, conceded: int | float) -> None:
+    def add_goals(self, scored: int, conceded: int) -> None:
         """Accumulate goals scored and conceded (called each matchday)."""
         self.goals_scored += scored
         self.goals_conceded += conceded
