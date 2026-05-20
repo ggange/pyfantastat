@@ -23,6 +23,7 @@ A Python library for Italian fantasy football (Fantacalcio) league management �
 
 ```bash
 pip install pyfantastat                  # core library
+pip install "pyfantastat[pandas]"        # + pandas DataFrame helpers
 pip install "pyfantastat[notebook]"      # + Jupyter, pandas, matplotlib, seaborn
 ```
 
@@ -268,6 +269,33 @@ print(f"Total EFV: {result.total_efv:.2f}")
 
 ---
 
+### pandas helpers (optional)
+
+Requires `pip install "pyfantastat[pandas]"`.
+
+```python
+from pyfantastat import (
+    roster_to_dataframe,
+    rosters_to_dataframe,
+    top_formation_to_dataframe,
+    matchday_to_dataframe,
+)
+
+# Single team roster → DataFrame (one row per player)
+df = roster_to_dataframe(rosters["my team"])
+
+# All team rosters → DataFrame with an extra "team" column
+df = rosters_to_dataframe(rosters)
+
+# TopFormationResult → DataFrame (one row per selected player, ranked)
+df = top_formation_to_dataframe(result)
+
+# FormazioniMatchday → DataFrame (one row per player appearance)
+df = matchday_to_dataframe(matchday)
+```
+
+---
+
 ### Statistics module
 
 ```python
@@ -336,6 +364,7 @@ pyfantastat/
 ├── team.py              # Team class
 ├── championship.py      # Championship class (ranking + analytics)
 ├── formazioni.py        # top_formation, validate_formazioni, build_team_rosters
+├── pandas_utils.py      # optional DataFrame helpers (requires pyfantastat[pandas])
 ├── statistics.py        # mean, std, median, pearson_correlation, helpers
 ├── monte_carlo.py       # MonteCarloSimulator, MonteCarloResult
 ├── io/
@@ -354,11 +383,13 @@ tests/
 ├── test_team.py
 ├── test_championship.py
 ├── test_championship_stats.py
+├── test_championship_tiebreakers.py
 ├── test_statistics.py
 ├── test_monte_carlo.py
 ├── test_loader.py
 ├── test_formazioni_io.py
-├── test_formazioni_analytics.py
+├── test_formations.py
+├── test_pandas_utils.py
 └── test_import.py
 ```
 
@@ -377,6 +408,13 @@ pytest --cov=pyfantastat --cov-report=term-missing
 ---
 
 ## Changelog
+
+### 0.3.1
+
+- Added `pyfantastat.pandas_utils` module with four DataFrame conversion helpers:
+  `roster_to_dataframe`, `rosters_to_dataframe`, `top_formation_to_dataframe`, `matchday_to_dataframe`
+- Added `pyfantastat[pandas]` optional-dependency extra
+- CI now installs the `pandas` extra so pandas tests run on every push
 
 ### 0.3.0
 
