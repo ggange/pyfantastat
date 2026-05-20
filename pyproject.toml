@@ -4,9 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pyfantastat"
-version = "0.3.1"
+version = "0.3.2"
 description = "Italian fantasy football (Fantacalcio) league management library"
 license = {text = "MIT"}
+authors = [{name = "ggange"}]
 requires-python = ">=3.10"
 dependencies = [
     "numpy>=1.24",
