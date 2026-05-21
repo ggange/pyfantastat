@@ -84,3 +84,77 @@ def test_generate_ranking_idempotent(simple_championship):
 
     assert list(simple_championship.ranking) == list(ranking_first)
     assert goals_scored_first == goals_scored_second
+
+
+# ---------------------------------------------------------------------------
+# ranking_at_matchday tests
+# ---------------------------------------------------------------------------
+
+
+def test_ranking_at_matchday_zero(simple_championship):
+    """Before any match, all teams have 0 points."""
+    result = simple_championship.ranking_at_matchday(0)
+    assert np.all(result == 0)
+    assert result.shape == (4,)
+
+
+def test_ranking_at_matchday_partial(simple_championship):
+    """Points after matchday 1 match a manual re-run up to that point."""
+    result = simple_championship.ranking_at_matchday(1)
+    # round 0: T0(80) vs T1(70) → T0 wins; T2(75) vs T3(66) → T2 wins
+    assert result[0] == 3
+    assert result[2] == 3
+    assert result[1] == 0
+    assert result[3] == 0
+
+
+def test_ranking_at_matchday_full(simple_championship):
+    """At current_matchday, result matches self.ranking after generate_ranking()."""
+    simple_championship.set_current_matchday(3)
+    simple_championship.generate_ranking()
+    expected = simple_championship.ranking.copy()
+
+    result = simple_championship.ranking_at_matchday(3)
+    np.testing.assert_array_equal(result, expected)
+
+
+def test_ranking_at_matchday_does_not_mutate(simple_championship):
+    """ranking_at_matchday must not modify self.ranking or team goals."""
+    simple_championship.generate_ranking()
+    ranking_before = simple_championship.ranking.copy()
+    goals_before = [t.goals_scored for t in simple_championship.teams]
+
+    simple_championship.ranking_at_matchday(2)
+
+    np.testing.assert_array_equal(simple_championship.ranking, ranking_before)
+    assert [t.goals_scored for t in simple_championship.teams] == goals_before
+
+
+def test_ranking_at_matchday_sort_flag(simple_championship):
+    """sort=True returns (ranking, sorted_indices) with descending order."""
+    ranking, sorted_indices = simple_championship.ranking_at_matchday(3, sort=True)
+    assert isinstance(ranking, np.ndarray)
+    assert isinstance(sorted_indices, np.ndarray)
+    # sorted_indices must produce a non-increasing sequence of points
+    assert all(
+        ranking[sorted_indices[i]] >= ranking[sorted_indices[i + 1]]
+        for i in range(len(sorted_indices) - 1)
+    )
+    # first entry is the team with the most points
+    assert ranking[sorted_indices[0]] == ranking.max()
+
+
+def test_ranking_at_matchday_out_of_range(simple_championship):
+    """Negative or too-large matchday raises ValueError."""
+    with pytest.raises(ValueError):
+        simple_championship.ranking_at_matchday(-1)
+    with pytest.raises(ValueError):
+        simple_championship.ranking_at_matchday(999)
+
+
+def test_ranking_at_matchday_no_calendar():
+    """Raises ValueError when calendar is not set."""
+    teams = [Team(f"T{i}", f"U{i}") for i in range(4)]
+    ch = Championship(teams)
+    with pytest.raises(ValueError):
+        ch.ranking_at_matchday(0)
