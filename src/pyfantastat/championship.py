@@ -279,6 +279,44 @@ class Championship:
                 self.teams[match[0]].add_goals(goals[0], goals[1])
                 self.teams[match[1]].add_goals(goals[1], goals[0])
 
+    def ranking_at_matchday(
+        self,
+        matchday: int,
+        sort: bool = False,
+    ) -> "np.ndarray | tuple[np.ndarray, np.ndarray]":
+        """Return league points at a specific matchday without mutating object state.
+
+        :param matchday: Zero-based index of the matchday to evaluate (inclusive).
+            Pass ``0`` to get the state before any match is played.
+        :param sort: If ``True``, also return a sorted-indices array (descending
+            by points). For full tiebreaker resolution use
+            ``set_current_matchday`` + ``generate_ranking`` + ``sort_ranking``.
+        :returns: ``ranking`` array when *sort* is ``False``; ``(ranking,
+            sorted_indices)`` when *sort* is ``True``.
+        :raises ValueError: If calendar is not set or *matchday* is out of range.
+        """
+        if not self.calendar:
+            raise ValueError("Calendar must be set before generating ranking.")
+        if matchday < 0 or matchday > len(self.calendar):
+            raise ValueError(f"Matchday index {matchday} is out of range.")
+
+        ranking = np.zeros(len(self.teams))
+        for day_idx, day in enumerate(self.calendar[:matchday]):
+            for match in day:
+                res, _ = self.match_result(match, day_idx)
+                if res == 1:
+                    ranking[match[0]] += 3
+                elif res == 2:
+                    ranking[match[1]] += 3
+                else:
+                    ranking[match[0]] += 1
+                    ranking[match[1]] += 1
+
+        if sort:
+            sorted_indices = np.argsort(-ranking, kind="stable")
+            return ranking, sorted_indices
+        return ranking
+
     # ------------------------------------------------------------------
     # Ranking sorting / tiebreakers
     # ------------------------------------------------------------------
